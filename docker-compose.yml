@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql:/data/mysql
+
+  #MONGO
+  mongodb:
+    image: bitnami/mongodb:${MONGO_IMAGE_TAG}
+    container_name: mongodb-primary
+    restart: ${RESTART_POLICY}
+    environment:
+      - TZ
+      - MONGODB_USERNAME
+      - MONGODB_PASSWORD
+      - MONGODB_DATABASE
+      - MONGODB_ROOT_PASSWORD
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - mongodb-data:/bitnami/mongodb:Z
+    ports:
+      - 27017:27017
+     
+# KAFKA-DEBEZİUM
+  zookeeper:
+    image: bitnami/zookeeper:${ZOOKEEPER_IMAGE_TAG}
+    container_name: zookeeper
+    restart: ${RESTART_POLICY}
+    environment:
+      - TZ
+      - ZOO_ENABLE_AUTH=yes
+      - ZOO_SERVER_USERS=kafka
+      - ZOO_SERVER_PASSWORDS=kafka_password
+    volumes:
+      - zookeeper-data:/bitnami/zookeeper:Z
+    ports:
+      - 2181:2181
+
+  kafka:
+    image: bitnami/kafka:${KAFKA_IMAGE_TAG}
+    container_name: kafka
+    restart: ${RESTART_POLICY}
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
+      - KAFKA_ZOOKEEPER_USER=kafka
+      - KAFKA_ZOOKEEPER_PASSWORD=kafka_password
+    volumes:
+      - kafka-data:/bitnami/kafka:Z
+    ports:
+      - 9092:9092
+      - 9093:9093
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:${KAFDROP_IMAGE_TAG}
+    container_name: kafkawebui
+    restart: ${RESTART_POLICY}
+    environment:
+      - TZ
+      - KAFKA_BROKERCONNECT
+      - JVM_OPTS
+    ports:
+      - 9000:9000
+
+  debezium:
+    image: debezium/connect:${DEBEZIUM_IMAGE_TAG}
+    container_name: debezium
+    restart: ${RESTART_POLICY}
+    environment:
+      - TZ
+      - GROUP_ID
+      - BOOTSTRAP_SERVERS
+      - CONFIG_STORAGE_TOPIC
+      - OFFSET_STORAGE_TOPIC
+      - STATUS_STORAGE_TOPIC
+    volumes:
+      - logs:/kafka/logs:Z
+      - datas:/kafka/data:Z
+      - configs:/kafka/config:Z
+    ports:
+      - 8083:8083
+
+volumes:
+  logs:
+  datas:
+  configs:
+  kafka-data:
+  zookeeper-data:
+  mongodb-data:
+  elasticsearch-logs:
+  elasticsearch-data:
+  kibana-data:
+
